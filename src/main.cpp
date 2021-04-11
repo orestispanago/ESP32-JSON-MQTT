@@ -18,12 +18,12 @@
 #include <WiFi.h>       // needed for the WiFi communication
 #include <MQTTClient.h> // MQTT Client from Joël Gaehwiler https://github.com/256dpi/arduino-mqtt   keepalive manually to 15s
 
-String WiFi_SSID = "YourWiFiSSID";           // change according your setup : SSID and password for the WiFi network
-String WiFi_PW = "YourWiFiPassword";         //    "
-String mqtt_broker = "YourMQTTBrokerIP";     // change according your setup : IP Adress or FQDN of your MQTT broker
-String mqtt_user = "YourMQTTBrokerUsername"; // change according your setup : username and password for authenticated broker access
-String mqtt_pw = "YourMQTTBrokerPassword";   //    "
-String input_topic = "YourTopic";            // change according your setup : MQTT topic for messages from device to broker
+const char* WiFi_SSID = "YourWiFiSSID";           // change according your setup : SSID and password for the WiFi network
+const char* WiFi_PW = "YourWiFiPassword";         //    "
+const char* mqtt_broker = "YourMQTTBrokerIP";     // change according your setup : IP Adress or FQDN of your MQTT broker
+const char* mqtt_user = "YourMQTTBrokerUsername"; // change according your setup : username and password for authenticated broker access
+const char* mqtt_pw = "YourMQTTBrokerPassword";   //    "
+const char* input_topic = "YourTopic";            // change according your setup : MQTT topic for messages from device to broker
 String clientId = "ESP32Client-";            // Necessary for user-pass auth
 
 unsigned long waitCount = 0; // counter
@@ -71,7 +71,7 @@ void loop()
   {
   case 0: // MQTT and WiFi down: start WiFi
     Serial.println("MQTT and WiFi down: start WiFi");
-    WiFi.begin(WiFi_SSID.c_str(), WiFi_PW.c_str());
+    WiFi.begin(WiFi_SSID, WiFi_PW);
     conn_stat = 1;
     break;
   case 1: // WiFi starting, do nothing here
@@ -80,15 +80,15 @@ void loop()
     break;
   case 2: // WiFi up, MQTT down: start MQTT
     Serial.println("WiFi up, MQTT down: start MQTT");
-    mqttClient.begin(mqtt_broker.c_str(), 1883, espClient); //   config MQTT Server, use port 8883 for secure connection
+    mqttClient.begin(mqtt_broker, 1883, espClient); //   config MQTT Server, use port 8883 for secure connection
     clientId += String(random(0xffff), HEX);                // Create a random client ID
-    mqttClient.connect(clientId.c_str(), mqtt_user.c_str(), mqtt_pw.c_str());
+    mqttClient.connect(clientId.c_str(), mqtt_user, mqtt_pw);
     conn_stat = 3;
     waitCount = 0;
     break;
   case 3: // WiFi up, MQTT starting, do nothing here
     Serial.println("WiFi up, MQTT starting, wait : " + String(waitCount));
-    mqttClient.connect(clientId.c_str(), mqtt_user.c_str(), mqtt_pw.c_str());
+    mqttClient.connect(clientId.c_str(), mqtt_user, mqtt_pw);
     waitCount++;
     break;
   case 4: // WiFi up, MQTT up: finish MQTT configuration
