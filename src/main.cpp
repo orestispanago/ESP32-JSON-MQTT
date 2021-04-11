@@ -18,23 +18,30 @@
 #include <WiFi.h>       // needed for the WiFi communication
 #include <MQTTClient.h> // MQTT Client from Joël Gaehwiler https://github.com/256dpi/arduino-mqtt   keepalive manually to 15s
 
-unsigned long waitCount = 0;                 // counter
-uint8_t conn_stat = 0;                       // Connection status for WiFi and MQTT:
-                                             //
-                                             // status |   WiFi   |    MQTT
-                                             // -------+----------+------------
-                                             //      0 |   down   |    down
-                                             //      1 | starting |    down
-                                             //      2 |    up    |    down
-                                             //      3 |    up    |  starting
-                                             //      4 |    up    | finalising
-                                             //      5 |    up    |     up
+String WiFi_SSID = "YourWiFiSSID";           // change according your setup : SSID and password for the WiFi network
+String WiFi_PW = "YourWiFiPassword";         //    "
+String mqtt_broker = "YourMQTTBrokerIP";     // change according your setup : IP Adress or FQDN of your MQTT broker
+String mqtt_user = "YourMQTTBrokerUsername"; // change according your setup : username and password for authenticated broker access
+String mqtt_pw = "YourMQTTBrokerPassword";   //    "
+String input_topic = "YourTopic";            // change according your setup : MQTT topic for messages from device to broker
+String clientId = "ESP32Client-";            // Necessary for user-pass auth
+
+unsigned long waitCount = 0; // counter
+uint8_t conn_stat = 0;       // Connection status for WiFi and MQTT:
+                             //
+                             // status |   WiFi   |    MQTT
+                             // -------+----------+------------
+                             //      0 |   down   |    down
+                             //      1 | starting |    down
+                             //      2 |    up    |    down
+                             //      3 |    up    |  starting
+                             //      4 |    up    | finalising
+                             //      5 |    up    |     up
 
 unsigned long lastStatus = 0; // counter in example code for conn_stat == 5
 unsigned long lastTask = 0;   // counter in example code for conn_stat <> 5
 
 const char *Version = "{\"Version\":\"low_prio_wifi_v2\"}";
-const char *Status = "{\"Message\":\"up and running\"}";
 
 WiFiClient espClient;       // TCP client object, uses SSL/TLS
 MQTTClient mqttClient(512); // MQTT client object with a buffer size of 512 (depends on your message size)
@@ -74,17 +81,18 @@ void loop()
   case 2: // WiFi up, MQTT down: start MQTT
     Serial.println("WiFi up, MQTT down: start MQTT");
     mqttClient.begin(mqtt_broker.c_str(), 1883, espClient); //   config MQTT Server, use port 8883 for secure connection
-    mqttClient.connect(mqtt_user.c_str(), mqtt_pw.c_str());
+    clientId += String(random(0xffff), HEX);                // Create a random client ID
+    mqttClient.connect(clientId.c_str(), mqtt_user.c_str(), mqtt_pw.c_str());
     conn_stat = 3;
     waitCount = 0;
     break;
   case 3: // WiFi up, MQTT starting, do nothing here
     Serial.println("WiFi up, MQTT starting, wait : " + String(waitCount));
+    mqttClient.connect(clientId.c_str(), mqtt_user.c_str(), mqtt_pw.c_str());
     waitCount++;
     break;
   case 4: // WiFi up, MQTT up: finish MQTT configuration
     Serial.println("WiFi up, MQTT up: finish MQTT configuration");
-    //mqttClient.subscribe(output_topic);
     mqttClient.publish(input_topic, Version);
     conn_stat = 5;
     break;
@@ -95,12 +103,10 @@ void loop()
   if (conn_stat == 5)
   {
     if (millis() - lastStatus > 10000)
-    { // Start send status every 10 sec (just as an example)
-      // Serial.println(Status);
+    {
       String json = "{\"temp_in\":\"" + String(random(10, 20)) + "\"}";
       char *payload = &json[0]; // converts String to char*
       mqttClient.publish(input_topic, payload);
-      // mqttClient.publish(input_topic, Status); //      send status to broker
       mqttClient.loop();     //      give control to MQTT to send message to broker
       lastStatus = millis(); //      remember time of last sent status message
     }
